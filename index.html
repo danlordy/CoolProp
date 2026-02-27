@@ -1,105 +1,275 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="es">
 
 <head>
-    <meta charset="utf-8" />
-    <title>CoolProp Javascript example 1</title>
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.0/themes/smoothness/jquery-ui.css" />
-    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
-    <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora CoolProp</title>
+    <link rel="icon" href="data:,">
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
 
-    <script src="http://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
-    <script>
-        //<link rel="stylesheet" href="/resources/demos/style.css" />
-    </script>
+        .panel {
+            background: #f4f4f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
 
-    <!-- (Problems with CORS) script src="http://www.coolprop.sourceforge.net/jscript/coolprop.js"></script -->
+        .fila-input {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
+        select,
+        input,
+        button {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 20px;
+            font-weight: bold;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="ui-widget">
-        <label>FluidName: </label>
-        <select id="FluidName">
-            <option>Nitrogen</option>
-            <option>R134a</option>
-        </select>
-    </div>
-    <div class="ui-widget">
-        <label>Input #1: </label>
-        <select id="Name1">
-            <option value="">Select one...</option>
-            <option value="Pressure">Pressure [Pa]</option>
-            <option value="Temperature">Temperature [K]</option>
-            <option value="Density">Density [kg/m&#179;]</option>
-        </select>
-        <input id='Value1'></input>
-    </div>
-    <div class="ui-widget">
-        <label>Input #2: </label>
-        <select id="Name2">
-            <option value="">Select one...</option>
-            <option value="Pressure">Pressure [Pa]</option>
-            <option value="Temperature">Temperature [K]</option>
-            <option value="Density">Density [kg/m&#179;]</option>
-        </select>
-        <input id='Value2'></input>
+    <h2>Cálculos Termodinámicos</h2>
+
+    <div class="panel">
+        <div class="fila-input">
+            <label>Fluido:
+                <select id="ui-fluido">
+                    <option value="Water">Agua (Water)</option>
+                    <option value="R134a">R134a</option>
+                    <option value="Ammonia">Amoníaco (Ammonia)</option>
+                    <option value="Air">Aire (Air)</option>
+                    <option value="R410A">R410A</option>
+                </select>
+            </label>
+            <label>Unidades:
+                <select id="ui-unidades">
+                    <option value="SI">Sistema Internacional (SI)</option>
+                    <option value="EN">Sistema Inglés (EN)</option>
+                </select>
+            </label>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">
+
+        <div class="fila-input">
+            <label>Propiedad 1:
+                <select id="ui-p1">
+                    <option value="T">Temperatura (T)</option>
+                    <option value="P">Presión (P)</option>
+                    <option value="V">Volumen Específico (V)</option>
+                    <option value="U">Energía Interna (U)</option>
+                    <option value="H">Entalpía (H)</option>
+                    <option value="S">Entropía (S)</option>
+                    <option value="X">Calidad (X)</option>
+                </select>
+            </label>
+            <input type="number" id="ui-v1" value="210" step="any">
+        </div>
+
+        <div class="fila-input">
+            <label>Propiedad 2:
+                <select id="ui-p2">
+                    <option value="U">Energía Interna (U)</option>
+                    <option value="T">Temperatura (T)</option>
+                    <option value="P">Presión (P)</option>
+                    <option value="V">Volumen Específico (V)</option>
+                    <option value="H">Entalpía (H)</option>
+                    <option value="S">Entropía (S)</option>
+                    <option value="X">Calidad (X)</option>
+                </select>
+            </label>
+            <input type="number" id="ui-v2" value="700" step="any">
+        </div>
+
+        <button id="btn-calcular" disabled>Cargando módulo...</button>
     </div>
 
-    <button id="calc">Calculate</button>
-    <div class="ui-widget">
-        <label>Output: </label>
-    </div>
-    <div class="ui-widget">
-        <p id="output">
-    </div>
+    <div id="resultado"></div>
 
     <script type="module">
-        import Module from './coolprop.js';
-        var coolprop = await Module();
+        import initCoolProp from 'https://cdn.jsdelivr.net/gh/danlordy/CoolProp@main/coolprop.js';
 
-        function text2key(text) {
-            if (text == 'Pressure [Pa]')
-                return 'P';
-            else if (text == 'Temperature [K]')
-                return 'T';
-            else if (text == 'Density [kg/m&#179;]')
-                return 'D';
-        }
-        //using jQuery
-        $('#calc').click(function () {
-            var name = $('#FluidName :selected').text()
-            var key1 = text2key($('#Name1 :selected').text())
-            var key2 = text2key($('#Name2 :selected').text())
-            var val1 = parseFloat($('#Value1').val())
-            var val2 = parseFloat($('#Value2').val())
+        let cp_instance = null;
 
-            var T = coolprop.PropsSI('T', key1, val1, key2, val2, name)
-            var rho = coolprop.PropsSI('D', key1, val1, key2, val2, name)
-            var p = coolprop.PropsSI('P', key1, val1, key2, val2, name)
-            var s = coolprop.PropsSI('S', key1, val1, key2, val2, name)
-            var h = coolprop.PropsSI('H', key1, val1, key2, val2, name)
-            var cp = coolprop.PropsSI('C', key1, val1, key2, val2, name)
-            console.log('T = ' + T + ' K')
-            console.log('rho = ' + rho + ' kg/m^3')
-            console.log('p = ' + p + ' Pa')
-            console.log('s = ' + s + ' J/kg/K')
-            console.log('h = ' + h + ' J/kg')
-            console.log('cp = ' + cp + ' J/kg/K')
-
-            var text = ''
-            text += 'T = ' + T + ' K\n' + '<br>'
-            text += 'rho = ' + rho + ' kg/m&#179; <br>'
-            text += 'p = ' + p + ' Pa<br>'
-            text += 's = ' + s + ' J/kg/K<br>'
-            text += 'h = ' + h + ' J/kg<br>'
-            text += 'cp = ' + cp + ' J/kg/K<br>'
-
-            $("#output").html(text);
-
+        // Inicializar CoolProp
+        initCoolProp({
+            locateFile: function (path) {
+                if (path.endsWith('.wasm')) return 'https://cdn.jsdelivr.net/gh/danlordy/CoolProp@main/coolprop.wasm';
+                return path;
+            }
+        }).then(function (cp) {
+            cp_instance = cp;
+            const btn = document.getElementById('btn-calcular');
+            btn.innerText = "Calcular Estado";
+            btn.disabled = false;
+        }).catch(function (err) {
+            document.getElementById('resultado').innerHTML = `<p class="error">Error al cargar CoolProp: ${err.message}</p>`;
         });
-    </script>
 
+        // Evento del botón
+        document.getElementById('btn-calcular').addEventListener('click', () => {
+            if (!cp_instance) return;
+
+            // Leer valores de la UI
+            const fluido = document.getElementById('ui-fluido').value;
+            const sys = document.getElementById('ui-unidades').value;
+            const p1 = document.getElementById('ui-p1').value;
+            const v1 = parseFloat(document.getElementById('ui-v1').value);
+            const p2 = document.getElementById('ui-p2').value;
+            const v2 = parseFloat(document.getElementById('ui-v2').value);
+
+            if (isNaN(v1) || isNaN(v2)) {
+                document.getElementById('resultado').innerHTML = '<p class="error">Por favor, ingresa valores numéricos válidos.</p>';
+                return;
+            }
+
+            const mis_estados = [[p1, v1, p2, v2]];
+
+            // Ejecutar el cálculo
+            const df_final = procesar_estados_universal(mis_estados, fluido, sys, cp_instance);
+
+            // Dibujar la tabla HTML
+            renderizarTabla(df_final);
+        });
+
+        // La función de cálculo (modificada para recibir la instancia cp)
+        function procesar_estados_universal(lista_estados, fluido, sys, cp) {
+            let res = [];
+            for (let i = 0; i < lista_estados.length; i++) {
+                let [p1, val1, p2, val2] = lista_estados[i];
+                p1 = String(p1).trim().toUpperCase(); p2 = String(p2).trim().toUpperCase();
+                sys = sys.trim().toUpperCase();
+
+                const a_base = (prop, val, s) => {
+                    if (prop === 'T') return s === "SI" ? val + 273.15 : (val - 32) * 5 / 9 + 273.15;
+                    if (prop === 'P') return s === "SI" ? val * 1000 : val * 6894.757;
+                    if (prop === 'V') return s === "SI" ? 1 / val : 1 / (val * 0.062428);
+                    if (prop === 'U' || prop === 'H') return s === "SI" ? val * 1000 : val * 2326.0;
+                    if (prop === 'S') return s === "SI" ? val * 1000 : val * 4186.8;
+                    return val;
+                };
+
+                let b_val1 = a_base(p1, val1, sys); let b_val2 = a_base(p2, val2, sys);
+                let k1 = p1 === 'V' ? 'D' : (p1 === 'X' ? 'Q' : p1);
+                let k2 = p2 === 'V' ? 'D' : (p2 === 'X' ? 'Q' : p2);
+                let fila = {};
+
+                try {
+                    if ((k1 === 'T' && (k2 === 'U' || k2 === 'H')) || (k2 === 'T' && (k1 === 'U' || k1 === 'H'))) {
+                        let T_val = k1 === 'T' ? b_val1 : b_val2;
+                        let prop_val = (k1 === 'U' || k1 === 'H') ? b_val1 : b_val2;
+                        let prop_str = (k1 === 'U' || k2 === 'U') ? 'U' : 'H';
+                        let val_f = cp.PropsSI(prop_str, 'T', T_val, 'Q', 0, fluido);
+                        let val_g = cp.PropsSI(prop_str, 'T', T_val, 'Q', 1, fluido);
+                        if (prop_val >= val_f && prop_val <= val_g) {
+                            k1 = 'T'; b_val1 = T_val; k2 = 'Q'; b_val2 = (prop_val - val_f) / (val_g - val_f);
+                        } else throw new Error("Fuera de la campana.");
+                    }
+
+                    let T_K = cp.PropsSI('T', k1, b_val1, k2, b_val2, fluido);
+                    let P_Pa = cp.PropsSI('P', k1, b_val1, k2, b_val2, fluido);
+                    let D_kgm3 = cp.PropsSI('D', k1, b_val1, k2, b_val2, fluido);
+                    let U_Jkg = cp.PropsSI('U', k1, b_val1, k2, b_val2, fluido);
+                    let H_Jkg = cp.PropsSI('H', k1, b_val1, k2, b_val2, fluido);
+                    let S_JkgK = cp.PropsSI('S', k1, b_val1, k2, b_val2, fluido);
+                    let Q; try { Q = cp.PropsSI('Q', k1, b_val1, k2, b_val2, fluido); } catch (e) { Q = -1; }
+
+                    if (sys === "SI") {
+                        fila["T [°C]"] = +(T_K - 273.15).toFixed(2); fila["P [kPa]"] = +(P_Pa / 1000).toFixed(2);
+                        fila["V"] = (1 / D_kgm3).toFixed(5); fila["U [kJ/kg]"] = +(U_Jkg / 1000).toFixed(2);
+                        fila["H [kJ/kg]"] = +(H_Jkg / 1000).toFixed(2); fila["S [kJ/kgK]"] = +(S_JkgK / 1000).toFixed(4);
+                    } else {
+                        fila["T [°F]"] = +((T_K - 273.15) * 9 / 5 + 32).toFixed(2); fila["P [psia]"] = +(P_Pa / 6894.757).toFixed(2);
+                        fila["V"] = ((1 / D_kgm3) * 16.0185).toFixed(5); fila["U [BTU/lb]"] = +(U_Jkg / 2326.0).toFixed(2);
+                        fila["H [BTU/lb]"] = +(H_Jkg / 2326.0).toFixed(2); fila["S [BTU/lbR]"] = +(S_JkgK / 4186.8).toFixed(4);
+                    }
+
+                    if (Q >= 0 && Q <= 1) {
+                        fila["Fase"] = Q <= 0.0001 ? "Líquido Sat." : (Q >= 0.9999 ? "Vapor Sat." : `Mezcla (X=${Q.toFixed(3)})`);
+                        fila["X"] = +Q.toFixed(4);
+                    } else {
+                        let T_sat = cp.PropsSI('T', 'P', P_Pa, 'Q', 0, fluido);
+                        fila["Fase"] = T_K < T_sat ? "Líq. Comprimido" : "Vap. Sobrecalentado";
+                        fila["X"] = "-";
+                    }
+                } catch (error) { fila["Fase"] = `Error: ${error.message}`; }
+                res.push(fila);
+            }
+            return res;
+        }
+
+        // Función para inyectar la tabla en el HTML
+        function renderizarTabla(datos) {
+            const contenedor = document.getElementById('resultado');
+            if (!datos || datos.length === 0) {
+                contenedor.innerHTML = "<p>No hay datos para mostrar.</p>"; return;
+            }
+
+            const columnas = Object.keys(datos[0]);
+            let html = "<table><thead><tr>";
+            columnas.forEach(col => html += `<th>${col}</th>`);
+            html += "</tr></thead><tbody>";
+
+            datos.forEach(fila => {
+                html += "<tr>";
+                columnas.forEach(col => html += `<td>${fila[col] !== undefined ? fila[col] : '-'}</td>`);
+                html += "</tr>";
+            });
+
+            html += "</tbody></table>";
+            contenedor.innerHTML = html;
+        }
+    </script>
 </body>
 
 </html>
